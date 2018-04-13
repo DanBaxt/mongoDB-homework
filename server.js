@@ -5,6 +5,7 @@ var logger = require('morgan');
 var mongoose = require('mongoose');
 var request = require('request');
 var cheerio = require('cheerio');
+var db = require("./models/index.js");
 
 app.use(logger('dev'));
 app.use(bodyParser.urlencoded({
@@ -20,15 +21,12 @@ mongoose.Promise = Promise;
 mongoose.connect(MONGODB_URI);
 
 
-
-var Note = require('./models/note.js');
-var Article = require('./models/article.js');
-
 app.get('/', function (req, res) {
     res.send(index.html);
 });
 app.get('/scrape', function (req, res) {
     request('http://www.echojs.com/', function (error, response, html) {
+        console.log(html);
         var $ = cheerio.load(html);
         $('article h2').each(function (i, element) {
 
@@ -37,7 +35,7 @@ app.get('/scrape', function (req, res) {
             result.title = $(this).children('a').text();
             result.link = $(this).children('a').attr('href');
 
-            var entry = new Article(result);
+            var entry = new db.Article(result);
 
             db.Article.create(result)
                 .then(function (dbArticle) {
@@ -55,7 +53,7 @@ app.get('/scrape', function (req, res) {
 });
 
 app.get('/articles', function (req, res) {
-    Article.find({}, function (err, doc) {
+    db.Article.find({}, function (err, doc) {
         if (err) {
             console.log(err);
         } else {
@@ -66,7 +64,7 @@ app.get('/articles', function (req, res) {
 
 
 app.get('/articles/:id', function (req, res) {
-    Article.findOne({ '_id': req.params.id })
+    db.Article.findOne({ '_id': req.params.id })
         .populate('note')
         .exec(function (err, doc) {
             if (err) {
@@ -85,7 +83,7 @@ app.post('/articles/:id', function (req, res) {
         if (err) {
             console.log(err);
         } else {
-            Article.findOneAndUpdate({ '_id': req.params.id }, { 'note': doc._id })
+            db.Article.findOneAndUpdate({ '_id': req.params.id }, { 'note': doc._id })
                 .exec(function (err, doc) {
                     if (err) {
                         console.log(err);
